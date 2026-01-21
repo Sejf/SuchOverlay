@@ -1,6 +1,6 @@
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(SuchOverlay.SuchOverlay), "SuchOverlay", "1.0.0", "Envy")]
+[assembly: MelonInfo(typeof(SuchOverlay.SuchOverlay), "SuchOverlay", "1.1.0", "Envy")]
 [assembly: MelonGame("Voolgi", "SuchArt")]
 
 namespace SuchOverlay

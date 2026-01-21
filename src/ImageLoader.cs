@@ -21,29 +21,40 @@ namespace SuchOverlay
         
 
         public float Alpha { get; set; } = 0.5f;
-        public bool Unlit { get; set; } = false;
+        public bool UnlitShader { get; set; } = false;
+        public Texture2D CurrentTexture { get; set; }
         
-        private readonly List<string> _imagesPaths = new List<string>();
         private readonly string _modFolder = Path.Combine(MelonEnvironment.ModsDirectory, "SuchOverlay");
+        private readonly List<string> _imagesPaths = new List<string>();
         private int _currentIndex = 0;
         
         public Material EmptyMaterial()
         {
             Material mat;
             
-            if (Unlit)
-                mat = new Material(Shader.Find("UI/Default"));
+            if (UnlitShader)
+            {
+                mat = new Material(Shader.Find("Sprites/Default"));
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.DisableKeyword("_ALPHABLEND_ON");
+                mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+            }
             else
+            {
                 mat = new Material(Shader.Find("Standard"));
-            
-            mat.color = new Color(1f, 0f, 1f, Alpha);
-            mat.SetFloat("_Mode", 3);
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.EnableKeyword("_ALPHABLEND_ON");
-            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.color = new Color(1f, 0f, 1f, Alpha);
+                mat.SetFloat("_Mode", 3);
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            }
             
             mat.renderQueue = 3000;
 
@@ -85,8 +96,8 @@ namespace SuchOverlay
             _currentIndex++;
             if (_currentIndex >= _imagesPaths.Count)
                 _currentIndex = 0;
-
-            _canvasOverlay.CurrentPlane.GetComponent<Renderer>().material = LoadTexture(_imagesPaths[_currentIndex]);
+            
+            ChangeTexture(_currentIndex);
         }
         
         public void PreviousImage()
@@ -102,50 +113,31 @@ namespace SuchOverlay
             if (_currentIndex < 0)
                 _currentIndex = _imagesPaths.Count - 1;
             
-            _canvasOverlay.CurrentPlane.GetComponent<Renderer>().material = LoadTexture(_imagesPaths[_currentIndex]);
-            
+            ChangeTexture(_currentIndex);
         }
 
-        private Material LoadTexture(string texturePath)
+        private Material LoadTexture(string texturePath, float brightness = 1.0f)
         {
             byte[] bytes = File.ReadAllBytes(texturePath);
             
-            Texture2D tex = new Texture2D(2, 2);
-            tex.LoadImage(bytes);
-            SetPlaneAspectRatio(tex);
+            CurrentTexture = new Texture2D(2, 2);
+            CurrentTexture.LoadImage(bytes);
+            _canvasOverlay.SetPlaneAspectRatio(CurrentTexture);
             
             Material mat = EmptyMaterial();
-            mat.color = new Color(1f, 1f, 1f, Alpha);
-            mat.mainTexture = tex;
+            mat.color = new Color(brightness, brightness, brightness, Alpha);
+            
+            mat.mainTexture = CurrentTexture;
             
             return mat;
         }
-        
-        private void SetPlaneAspectRatio(Texture2D tex)
+
+        private void ChangeTexture(int index)
         {
-            if (_canvasOverlay.CurrentPlane == null || tex == null)
-                return;
-            
-            Vector3 scale = _canvasOverlay.DetectCanvasSize();
-            float planeWidth = scale.x;
-            float planeHeight = scale.y;
-            
-            float textureRatio = (float)tex.width / tex.height;
-            float planeRatio = planeWidth / planeHeight;
-
-            if (textureRatio > planeRatio)
-            {
-                scale.x = planeWidth;
-                scale.y = planeWidth / textureRatio;
-            }
+            if (UnlitShader) 
+                _canvasOverlay.CurrentPlane.GetComponent<Renderer>().material = LoadTexture(_imagesPaths[index], 0.5f);    
             else
-            {
-                scale.y = planeHeight;
-                scale.x = planeHeight * textureRatio;
-            }
-
-            _canvasOverlay.CurrentPlane.transform.localScale = scale;
+                _canvasOverlay.CurrentPlane.GetComponent<Renderer>().material = LoadTexture(_imagesPaths[index]);
         }
-        
     }
 }
